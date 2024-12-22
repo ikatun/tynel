@@ -22,8 +22,6 @@ async function main() {
   }
 
   const remotePort = await domainToPort(subdomain);
-  console.log('remotePort', remotePort);
-  console.log('localPort', localPort);
 
   const childProcess = spawn('ssh', ['-R', `${remotePort}:localhost:${localPort}`, '-N', 'tunneluser@technobabble.hr']);
 
@@ -39,7 +37,10 @@ async function main() {
   childProcess.stderr.on('data', (data) => {
     const log = data.toString();
     console.error(log);
-    if (log.includes('failed')) {
+    if (log.includes('connect_to') && log.includes('failed')) {
+      console.log('Local server no longer listening, please restart tynel');
+      childProcess.kill();
+    } else if (log.includes('failed')) {
       clearTimeout(timeoutId);
       console.log('This subdomain is already taken, try another one');
       childProcess.kill();
