@@ -6,7 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint '*/**/*.{js,ts,tsx}'",
     "build": "rm -rf build && tsc",
-    "start": "tsc-watch --onSuccess 'node build 10100 5173'"
+    "start": "tsc-watch --onSuccess 'node build 11001 testbot'"
   },
   "bin": {
     "tynel": "./build/index.js"
@@ -27,6 +27,7 @@
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "axios": "^1.7.9",
     "source-map-support": "^0.5.21"
   }
 }

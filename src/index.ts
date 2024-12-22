@@ -4,47 +4,50 @@ import 'source-map-support/register';
 
 import { spawn } from 'child_process';
 
-const usage = 'Usage: tynel <remotePort> <localPort>';
+import { domainToPort } from './domainToPort';
 
-const remotePort = parseInt(process.argv[2]);
-if (remotePort < 1 || remotePort > 1000 || isNaN(remotePort)) {
-  console.log(usage);
-  console.log('remotePort must be >= 1 and <= 1000');
-  process.exit(-1);
-}
+async function main() {
+  const usage = 'Usage: tynel <localPort> <subdomain>';
 
-const realRemotePort = remotePort + 10100;
-
-const localPort = parseInt(process.argv[3]);
-if (isNaN(localPort)) {
-  console.log(usage);
-  console.log('localPort must be a number');
-  process.exit(-1);
-}
-
-const childProcess = spawn('ssh', [
-  '-R',
-  `${realRemotePort}:localhost:${localPort}`,
-  '-N',
-  'tunneluser@technobabble.hr',
-]);
-
-const timeoutId = setTimeout(() => {
-  console.log(`http://${realRemotePort}.tunnel.technobabble.hr`);
-  console.log(`https://${realRemotePort}.tunnel.technobabble.hr`);
-}, 500);
-
-childProcess.stdout.on('data', (data) => {
-  console.log('ready');
-  console.log(data.toString());
-});
-
-childProcess.stderr.on('data', (data) => {
-  const log = data.toString();
-  console.error(log);
-  if (log.includes('failed')) {
-    clearTimeout(timeoutId);
-    console.log('This subdomain is already taken, try another one');
-    childProcess.kill();
+  const localPort = parseInt(process.argv[2]);
+  if (isNaN(localPort)) {
+    console.log(usage);
+    throw new Error('localPort must be a number');
   }
+
+  const subdomain = process.argv[3];
+  if (!subdomain) {
+    console.log(usage);
+    throw new Error('Missing subdomain');
+  }
+
+  const remotePort = await domainToPort(subdomain);
+  console.log('remotePort', remotePort);
+  console.log('localPort', localPort);
+
+  const childProcess = spawn('ssh', ['-R', `${remotePort}:localhost:${localPort}`, '-N', 'tunneluser@technobabble.hr']);
+
+  const timeoutId = setTimeout(() => {
+    console.log(`https://${subdomain}.tunnel.technobabble.hr`);
+  }, 500);
+
+  childProcess.stdout.on('data', (data) => {
+    console.log('ready');
+    console.log(data.toString());
+  });
+
+  childProcess.stderr.on('data', (data) => {
+    const log = data.toString();
+    console.error(log);
+    if (log.includes('failed')) {
+      clearTimeout(timeoutId);
+      console.log('This subdomain is already taken, try another one');
+      childProcess.kill();
+    }
+  });
+}
+
+main().catch((e) => {
+  console.error(e.message);
+  process.exit(-1);
 });
